@@ -26,19 +26,23 @@ tqdm.pandas()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
+
 # path
-TRAIN_PATH = "TOEFL11/train.csv"
-DEV_PATH = "TOEFL11/dev.csv"
-TEST_PATH = "TOEFL11/test.csv"
+TRAIN_PATH = "TOEFL11/train_paragraph.csv"
+DEV_PATH = "TOEFL11/dev_paragraph.csv"
+TEST_PATH = "TOEFL11/test_paragraph.csv"
+TEST_ROW_PATH = "TOEFL11/test.csv"
+
 
 # define parameter
-max_len = 512
-batch_size = 4
-max_epochs = 25
-num_training_steps = max_epochs * int(9900/batch_size)
+max_len = 220
+batch_size = 16
+max_epochs = 5
+num_training_steps = max_epochs * int(50310/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 3e-5
+learning_rate = 2e-5
+
 
 # define loader
 train_dataset = ToeflDataset(TRAIN_PATH, max_len, bert_name)
@@ -48,10 +52,12 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=colla
 valid_loader = DataLoader(dev_dataset, batch_size=batch_size, collate_fn=collate)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate)
 
+
 # load model
 print("Load Model")
 model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11)
 model = model.to(device)
+
 
 # define optimizer
 param_optimizer = list(model.named_parameters())
@@ -64,7 +70,8 @@ optimizer_grouped_parameters = [
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
 
-# define training and calidation
+
+# define training and validation
 def train_epoch(model, optimizer, train_loader):
     model.train()
     train_loss = total = 0
@@ -93,6 +100,7 @@ def validate_epoch(model, valid_loader):
             total += 1
         return valid_loss / total
 
+
 # training
 print("Start Training!")
 n_epochs = 0
@@ -116,6 +124,7 @@ while True:
     if n_epochs >= max_epochs:
         break
 
+
 # save loss graph
 epoch_ticks = range(1, n_epochs + 1)
 plt.plot(epoch_ticks, train_losses)
@@ -127,10 +136,12 @@ plt.ylabel('Loss')
 plt.xticks(epoch_ticks)
 plt.savefig('loss.png')
 
-# prediction
+
+# prediction of paragraph
 print("Start Prediction")
 model.eval()
 y_true, y_pred = [], []
+y_logits = []
 with torch.no_grad():
     for inputs, mask, segment, target, text in test_loader:
         loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
@@ -141,5 +152,31 @@ with torch.no_grad():
 
         y_true.extend(predictions)
         y_pred.extend(target)
-
+        y_logits.extend(logits)
 print(classification_report(y_pred, y_true))
+
+
+
+# prediction of text
+test_df_true = pd.read_csv(TEST_ROW_PATH)
+y_row_true = test_df_true.L1.values
+
+test_df_predict = pd.read_csv(TEST_PATH)
+test_array_predict = test_df_predict.TextFile.values
+
+preT = None
+preA = np.array([0,0,0,0,0,0,0,0,0,0,0])
+ans = []
+for i in range(len(test_array_predict)):
+    if preT == test_array_predict[i]:
+        preA += np.array(y_logits[i])
+    else:
+        if preT!=None:
+            ans.append(np.argmax(preA))
+        preA = np.array(y_logits[i])
+        preT = test_array_predict[i]
+ans.append(np.argmax(preA))
+
+print(classification_report(ans, y_row_true))
+
+model.save_pretrained('./pretrained')

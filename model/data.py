@@ -5,9 +5,11 @@ from transformers import BertTokenizer
 from torch.utils.data import Dataset
 import torch
 tqdm.pandas()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("device",device)
 
 class ToeflDataset(Dataset):
-    def __init__(self, data_path, max_len,bert_config):
+    def __init__(self, data_path, max_len, bert_config):
         df = pd.read_csv(data_path)
 
         self.tokenizer = BertTokenizer.from_pretrained(bert_config)
