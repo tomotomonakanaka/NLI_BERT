@@ -7,20 +7,9 @@ $ pip install -r requirements.txt
 $ git clone https://github.com/huggingface/transformers
 $ pip install transformers
 ```
-## Run simple BERT model
+## Simple BERT model
 ```
 $ python BERT_simple.py
-```
-
-### How can I improve
-```
-1. split data into paragraph  
--we can increase the datasets and decrease the parameters of BERT  
-2. Using RoBERTa  
--now we are overfitting  
-3. increasing dropout probabilities  
-4. decreasing learning rate or changing warm up rate  
-5. pretrain our model in task domain
 ```
 
 ### Results
@@ -99,30 +88,137 @@ Start Prediction
 weighted avg       0.74      0.72      0.72      1100
 ```
 
+### How can I improve
+```
+1. split data into paragraph  
+- we can increase the datasets and cover the all sentences in text.
+- some text has more than 512 tokens
+2. Using RoBERTa or AlBERT  
+-now we are overfitting, so decrease the parameters  
+3. changing hyperparameters (dropping out, learning rate, and warmup rate)  
+4. pretrain our model in task domain
+- https://arxiv.org/abs/1905.05583
+5. usin dev+train after deciding hyperparameters
+6. changing the way of sum up paragraph probability method
+```
+
+## Paragraph Splitting BERT model
+```
+$ python BERT_paragraph.py
+```
+
+#### Back Ground
+```
+・If I want to classify Texts by contents, we have to consider all of the sentences in the Texts
+- This is because the topic of text is at the beginning or ending
+- deviding text decrease the accuracy of classification.
+・However, if I want to classify the text by the structure, we don't have to consider it.
+```
+max_len = 220
+batch_size = 16
+max_epochs = 5
+bert_name = "bert-base-uncased"  
+learning_rate = 2.0e-5   
+param_optimizer = list(model.named_parameters())  
+no_decay = ['bias', 'gamma', 'beta']  
+optimizer_grouped_parameters = [  
+    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],  
+     'weight_decay_rate': 0.01},  
+    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],  
+     'weight_decay_rate': 0.0}  
+]
+warm_up = 0.1
 ```
 Start Training!
-epoch #  1      train_loss: 1.701       valid_loss: 1.119                                                                                                                                                   
+epoch #  1      train_loss: 1.835       valid_loss: 1.474
 
-epoch #  2      train_loss: 0.882       valid_loss: 1.031                                                                                                                                                   
+epoch #  2      train_loss: 1.201       valid_loss: 1.273   
 
-epoch #  3      train_loss: 0.467       valid_loss: 1.072                                                                                                                                                   
+epoch #  3      train_loss: 0.814       valid_loss: 1.236                    
 
+epoch #  4      train_loss: 0.543       valid_loss: 1.326        
+
+epoch #  5      train_loss: 0.378       valid_loss: 1.422         
+
+Stopping early
 Start Prediction
               precision    recall  f1-score   support
 
-           0       0.70      0.65      0.68       107
-           1       0.85      0.81      0.83       105
-           2       0.74      0.73      0.74       101
-           3       0.58      0.66      0.62        88
-           4       0.88      0.77      0.82       114
-           5       0.81      0.70      0.75       116
-           6       0.67      0.72      0.69        93
-           7       0.71      0.66      0.69       107
-           8       0.67      0.70      0.68        96
-           9       0.67      0.73      0.70        92
-          10       0.68      0.84      0.75        81
+           0       0.52      0.56      0.54       457
+           1       0.62      0.70      0.66       582
+           2       0.62      0.57      0.60       526
+           3       0.56      0.60      0.58       530
+           4       0.68      0.64      0.66       569
+           5       0.59      0.64      0.61       451
+           6       0.58      0.48      0.53       460
+           7       0.54      0.51      0.52       502
+           8       0.68      0.60      0.63       566
+           9       0.50      0.57      0.53       458
+          10       0.63      0.61      0.62       485
 
-    accuracy                           0.72      1100
-   macro avg       0.72      0.73      0.72      1100
-weighted avg       0.73      0.72      0.73      1100
+    accuracy                           0.59      5586
+   macro avg       0.59      0.59      0.59      5586
+weighted avg       0.60      0.59      0.59      5586
+
+              precision    recall  f1-score   support
+
+           0       0.90      0.82      0.86       110
+           1       0.96      0.86      0.91       111
+           2       0.76      0.92      0.83        83
+           3       0.83      0.73      0.78       114
+           4       0.88      0.91      0.89        97
+           5       0.85      0.81      0.83       105
+           6       0.76      0.86      0.81        88
+           7       0.85      0.77      0.81       111
+           8       0.76      0.82      0.79        93
+           9       0.82      0.82      0.82       100
+          10       0.79      0.90      0.84        88
+
+    accuracy                           0.83      1100
+   macro avg       0.83      0.84      0.83      1100
+weighted avg       0.84      0.83      0.83      1100
+
+accuracy: 0.8254545454545454
+```
+
+Using train + dev
+```
+Start Prediction
+              precision    recall  f1-score   support
+
+           0       0.52      0.59      0.55       457
+           1       0.63      0.70      0.66       582
+           2       0.62      0.56      0.59       526
+           3       0.55      0.57      0.56       530
+           4       0.69      0.66      0.67       569
+           5       0.61      0.60      0.61       451
+           6       0.57      0.51      0.54       460
+           7       0.53      0.56      0.55       502
+           8       0.67      0.63      0.65       566
+           9       0.54      0.56      0.55       458
+          10       0.67      0.63      0.65       485
+
+    accuracy                           0.60      5586
+   macro avg       0.60      0.60      0.60      5586
+weighted avg       0.60      0.60      0.60      5586
+
+              precision    recall  f1-score   support
+
+           0       0.86      0.78      0.82       110
+           1       0.95      0.84      0.89       113
+           2       0.77      0.92      0.84        84
+           3       0.79      0.71      0.75       111
+           4       0.88      0.90      0.89        98
+           5       0.87      0.86      0.87       101
+           6       0.77      0.86      0.81        90
+           7       0.83      0.78      0.80       107
+           8       0.77      0.80      0.79        96
+           9       0.81      0.87      0.84        93
+          10       0.87      0.90      0.88        97
+
+    accuracy                           0.83      1100
+   macro avg       0.83      0.84      0.83      1100
+weighted avg       0.84      0.83      0.83      1100
+
+accuracy: 0.8336363636363636
 ```

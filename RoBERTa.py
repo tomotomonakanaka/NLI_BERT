@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import regex as re
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import classification_report
 from tqdm import tqdm, tqdm_notebook
 
@@ -19,7 +19,7 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from model.data import ToeflDataset, collate
+from model.RoBERTa_data import ToeflDataset, collate
 
 tqdm.pandas()
 
@@ -36,11 +36,11 @@ TEST_ROW_PATH = "TOEFL11/test.csv"
 
 # define parameter
 max_len = 220
-batch_size = 32
-max_epochs = 5
+batch_size = 16
+max_epochs = 3
 num_training_steps = max_epochs * int(50310/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
-bert_name = "bert-base-uncased"
+bert_name = "roberta-base"
 learning_rate = 2e-5
 
 
@@ -55,7 +55,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate
 
 # load model
 print("Load Model")
-model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11)
+model = RobertaForSequenceClassification.from_pretrained(bert_name, num_labels=11)
 model = model.to(device)
 
 
