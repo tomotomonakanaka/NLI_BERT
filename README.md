@@ -5,7 +5,7 @@ $ unzip TOEFL11.zip
 $ pip install pytorch # depending on your device
 $ pip install -r requirements.txt
 $ git clone https://github.com/huggingface/transformers
-$ pip install transformers
+$ pip install transformers==2.2.1
 ```
 ## Simple BERT model
 ```
