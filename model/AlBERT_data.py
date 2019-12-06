@@ -37,7 +37,7 @@ class ToeflDataset(Dataset):
             self.segments.append(max_sequence_length * [0])
 
         self.targets = df.L1.tolist()
-        self.texts = df.Sentence.tolist()
+        self.texts = df.TextFile.tolist()
 
     def __getitem__(self, i):
         return self.inputs_lst[i], self.masks[i], self.segments[i], self.targets[i], self.texts[i]

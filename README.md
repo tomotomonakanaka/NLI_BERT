@@ -100,6 +100,8 @@ weighted avg       0.74      0.72      0.72      1100
 - https://arxiv.org/abs/1905.05583
 5. usin dev+train after deciding hyperparameters
 6. changing the way of sum up paragraph probability method
+7. using bert-large
+8. resizing paragraph model for not 220
 ```
 
 ## Paragraph Splitting BERT model
@@ -221,4 +223,32 @@ weighted avg       0.60      0.60      0.60      5586
 weighted avg       0.84      0.83      0.83      1100
 
 accuracy: 0.8336363636363636
+```
+
+## Domain-specific pretraining
+```
+python run_pretraining.py   --input_file=tmp/tf_examples.tfrecord   --output_dir=tmp/pretraining_output   --do_train=True   --do_eval=True   --bert_config_file=bert_data/uncased_L-12_H-768_A-12/bert_config.json   --init_checkpoint=bert_data/uncased_L-12_H-768_A-12/bert_model.ckpt   --train_batch_size=16   --max_seq_length=128   --max_predictions_per_seq=20   --num_train_steps=50000   --num_warmup_steps=5000 --learning_rate=2e-5
+```
+
+```
+INFO:tensorflow:***** Eval results *****
+INFO:tensorflow:  global_step = 50000
+INFO:tensorflow:  loss = 1.5952029
+INFO:tensorflow:  masked_lm_accuracy = 0.6594538
+INFO:tensorflow:  masked_lm_loss = 1.553228
+INFO:tensorflow:  next_sentence_accuracy = 0.97875
+INFO:tensorflow:  next_sentence_loss = 0.04855649
+```
+
+```
+python run_pretraining.py   --input_file=tmp/tf_examples.tfrecord   --output_dir=tmp/pretraining_output   --do_train=True   --do_eval=True   --bert_config_file=bert_data/uncased_L-12_H-768_A-12/bert_config.json   --init_checkpoint=bert_data/uncased_L-12_H-768_A-12/bert_model.ckpt   --train_batch_size=16   --max_seq_length=128   --max_predictions_per_seq=20   --num_train_steps=100000   --num_warmup_steps=10000 --learning_rate=2e-5
+```
+```
+INFO:tensorflow:***** Eval results *****
+INFO:tensorflow:  global_step = 100000
+INFO:tensorflow:  loss = 1.3737804
+INFO:tensorflow:  masked_lm_accuracy = 0.68698704
+INFO:tensorflow:  masked_lm_loss = 1.3770859
+INFO:tensorflow:  next_sentence_accuracy = 1.0
+INFO:tensorflow:  next_sentence_loss = 0.0028481877
 ```

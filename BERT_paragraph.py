@@ -32,11 +32,12 @@ TRAIN_PATH = "TOEFL11/train_paragraph.csv"
 DEV_PATH = "TOEFL11/dev_paragraph.csv"
 TEST_PATH = "TOEFL11/test_paragraph.csv"
 TEST_ROW_PATH = "TOEFL11/test.csv"
+modelPATH = "save_model/paragraphModel"
 
 
 # define parameter
 max_len = 220
-batch_size = 32
+batch_size = 16
 max_epochs = 5
 num_training_steps = max_epochs * int(50310/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
@@ -55,7 +56,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate
 
 # load model
 print("Load Model")
-model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11)
+model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
 model = model.to(device)
 
 
@@ -180,3 +181,5 @@ ans.append(np.argmax(preA))
 
 print(classification_report(ans, y_row_true))
 print(np.sum(ans==y_row_true)/len(ans))
+
+torch.save(model, modelPATH)
