@@ -20,6 +20,7 @@ from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from model.data import ToeflDataset, collate
+from model.BERT import BertForToefl
 
 tqdm.pandas()
 
@@ -47,16 +48,16 @@ learning_rate = 2e-5
 
 # define loader
 train_dataset = ToeflDataset(TRAIN_PATH, max_len, bert_name)
-dev_dataset = ToeflDataset(DEV_PATH, max_len, bert_name)
+valid_dataset = ToeflDataset(DEV_PATH, max_len, bert_name)
 test_dataset = ToeflDataset(TEST_PATH, max_len, bert_name)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate,shuffle='True')
-valid_loader = DataLoader(dev_dataset, batch_size=batch_size, collate_fn=collate)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate)
 
 
 # load model
 print("Load Model")
-model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
+model = BertForToefl.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
 model = model.to(device)
 
 

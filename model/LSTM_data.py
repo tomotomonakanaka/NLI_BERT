@@ -56,7 +56,7 @@ class LSTMDataset(Dataset):
             self.counts_list.append(counts[text])
 
     def __getitem__(self, i):
-        return self.inputs_list[i], self.mask_list[i], self.segment_list[i], self.target_list[i], self.max_counts-self.counts_list[i]
+        return self.inputs_list[i], self.mask_list[i], self.segment_list[i], self.target_list[i], self.max_counts-self.counts_list[i], self.counts_list[i]
 
     def __len__(self):
         return len(self.inputs_list)
@@ -72,28 +72,31 @@ def collate_LSTM(batch):
     mask = []
     segment = []
     target = []
+    roop = []
     length = []
     for item in batch:
         for i in range(item[4]):
-            item[0].append(torch.zeros(shape0, dtype=torch.long))
-            item[1].append(torch.zeros(shape1, dtype=torch.long))
-            item[2].append(torch.zeros(shape2, dtype=torch.long))
-            item[3].append(torch.zeros(shape3, dtype=torch.long))
+            item[0].append(torch.zeros(shape0, dtype=torch.long).to(device))
+            item[1].append(torch.zeros(shape1, dtype=torch.long).to(device))
+            item[2].append(torch.zeros(shape2, dtype=torch.long).to(device))
+            item[3].append(torch.zeros(shape3, dtype=torch.long).to(device))
         inputs.append(torch.stack(item[0]))
         mask.append(torch.stack(item[1]))
         segment.append(torch.stack(item[2]))
         target.append(torch.stack(item[3]))
-        length.append(item[4])
+        roop.append(item[4])
+        length.append(item[5])
 
     inputs = torch.stack(inputs)
     mask = torch.stack(mask)
     segment = torch.stack(segment)
     target = torch.stack(target)
-    length = torch.Tensor(length)
+    roop = torch.IntTensor(roop)
+    length = torch.IntTensor(length)
 
-    inputs, mask, segment, target, length = map(
+    inputs, mask, segment, target, roop, length = map(
         lambda x: x.to(device),
-        (inputs, mask, segment, target, length),
+        (inputs, mask, segment, target, roop, length),
     )
 
-    return inputs, mask, segment, target, length
+    return inputs, mask, segment, target, roop, length
