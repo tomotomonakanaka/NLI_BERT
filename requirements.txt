@@ -3,3 +3,5 @@
 pandas==0.25.1
 tqdm==4.35.0
 sklearn
+matplotlib
+regex

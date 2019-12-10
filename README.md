@@ -225,6 +225,36 @@ weighted avg       0.84      0.83      0.83      1100
 accuracy: 0.8336363636363636
 ```
 
+## Paragraph Splitting and LSTM BERT model
+```
+epoch #  1      train_loss: 0.194       valid_loss: 0.637
+epoch #  2      train_loss: 0.028       valid_loss: 0.694             
+epoch #  3      train_loss: 0.024       valid_loss: 0.683 
+
+Training:   0%|                                                                                                                                                                     | 0/310 [00:00<?, ?it/s]torch.Size([32, 9, 768])
+epoch #  4      train_loss: 0.020       valid_loss: 0.731                                                                                                                                                   
+
+Stopping early
+Start Prediction
+0.8045454545454546
+             precision    recall  f1-score   support
+
+          0       0.83      0.78      0.80       107
+          1       0.90      0.89      0.90       101
+          2       0.76      0.77      0.76        99
+          3       0.72      0.78      0.75        92
+          4       0.93      0.87      0.90       107
+          5       0.88      0.75      0.81       117
+          6       0.70      0.82      0.76        85
+          7       0.69      0.81      0.75        85
+          8       0.78      0.72      0.75       108
+          9       0.81      0.78      0.79       104
+         10       0.85      0.89      0.87        95
+
+   accuracy                           0.80      1100
+  macro avg       0.80      0.81      0.80      1100
+weighted avg       0.81      0.80      0.81      1100
+```
 ## Domain-specific pretraining
 ```
 python run_pretraining.py   --input_file=tmp/tf_examples.tfrecord   --output_dir=tmp/pretraining_output   --do_train=True   --do_eval=True   --bert_config_file=bert_data/uncased_L-12_H-768_A-12/bert_config.json   --init_checkpoint=bert_data/uncased_L-12_H-768_A-12/bert_model.ckpt   --train_batch_size=16   --max_seq_length=128   --max_predictions_per_seq=20   --num_train_steps=50000   --num_warmup_steps=5000 --learning_rate=2e-5

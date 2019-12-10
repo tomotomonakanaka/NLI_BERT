@@ -19,8 +19,8 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from model.LSTM_data import *
-from model.LSTM_BERT import *
+from model.LSTM_data_nograd import *
+from model.LSTM import *
 
 tqdm.pandas()
 
@@ -38,23 +38,26 @@ modelPATH = "save_model/paragraphModel"
 
 # define parameter
 max_len = 220
-batch_size = 8
-max_epochs = 4
+batch_size = 64
+max_epochs = 8
 num_training_steps = max_epochs * int(9900/batch_size)
-num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 2e-5
+learning_rate = 1e-4
 cls_hidden_size = 768
-LSTM_hidden_size = 100
+LSTM_hidden_size = 768
 
 # define loader
-test_dataset = LSTMDataset(TEST_PATH, max_len,bert_name)
+train_dataset = LSTMDataset(TRAIN_PATH, max_len,bert_name, modelPATH)
+valid_dataset = LSTMDataset(DEV_PATH, max_len,bert_name, modelPATH)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_LSTM, shuffle='True')
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
+test_dataset = LSTMDataset(TEST_PATH, max_len,bert_name, modelPATH)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
 
 
 # load model
 print("Load Model")
-model = LSTM_BERT(modelPATH,cls_hidden_size,LSTM_hidden_size)
+model = LSTM(cls_hidden_size,LSTM_hidden_size)
 model = model.to(device)
 
 # define optimizer
@@ -68,34 +71,31 @@ optimizer_grouped_parameters = [
     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
      'weight_decay_rate': 0.0}]
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
-scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
 
 
 # define training and validation
 def train_epoch(model, optimizer, train_loader):
     model.train()
+    count = 0
     train_loss = total = 0
-    for inputs, mask, segment, target, roop, length in tqdm(train_loader,
-                                                             desc='Training',
-                                                             leave=False):
+    for hiddens, target, length in tqdm(train_loader,desc='Training',leave=False):
+        if count == 0:
+            print(hiddens.shape)
+            count += 1
         optimizer.zero_grad()
-        loss = model(inputs, segment, mask, target, roop, length)[1]
+        loss = model(hiddens, target, length)[1]
         train_loss += loss.item()
         total += 1
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
-        scheduler.step()
     return train_loss / total
 
 def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for inputs, mask, segment, target, roop, length in tqdm(valid_loader,
-                                                                 desc='Validating',
-                                                                 leave=False):
-            loss = model(inputs, segment, mask, target, roop, length)[1]
+        for hiddens, target, length in tqdm(valid_loader,desc='Validating',leave=False):
+            loss = model(hiddens, target, length)[1]
             valid_loss += loss.item()
             total += 1
         return valid_loss / total
@@ -106,10 +106,6 @@ print("Start Training!")
 n_epochs = 0
 train_losses, valid_losses = [], []
 while True:
-    train_dataset = LSTMDataset(TRAIN_PATH, max_len,bert_name)
-    valid_dataset = LSTMDataset(DEV_PATH, max_len,bert_name)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_LSTM, shuffle='True')
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
     train_loss = train_epoch(model, optimizer, train_loader)
     valid_loss = validate_epoch(model, valid_loader)
     tqdm.write(
@@ -147,8 +143,8 @@ model.eval()
 y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
-    for inputs, mask, segment, target, roop, length in test_loader:
-        logits, loss, target = model(inputs, segment, mask, target, roop, length)[:]
+    for hiddens, target, length in test_loader:
+        logits, loss, target = model(hiddens, target, length)[:]
 
         logits = logits.detach().cpu().numpy()
         predictions = np.argmax(logits, axis=1)
