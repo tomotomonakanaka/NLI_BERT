@@ -3,88 +3,12 @@
 ```
 $ unzip TOEFL11.zip
 $ pip install pytorch # depending on your device
+$ pip install dgl # depending on your device
 $ pip install -r requirements.txt
-$ pip install transformers==2.2.1
 ```
-## Simple BERT model
+## run BERT model
 ```
-$ python BERT_simple.py
-```
-
-### Results
-max_len = 512  
-batch_size = 4  
-max_epochs = 5  
-bert_name = "bert-base-uncased"  
-learning_rate = 0.0001  
-param_optimizer = list(model.classifier.named_parameters())
-
-```
-              precision    recall  f1-score   support
-
-           0       0.10      0.32      0.15        31
-           1       0.48      0.17      0.25       282
-           2       0.05      0.23      0.08        22
-           3       0.20      0.30      0.24        67
-           4       0.26      0.27      0.27        96
-           5       0.04      0.31      0.07        13
-           6       0.12      0.44      0.19        27
-           7       0.07      0.50      0.12        14
-           8       0.63      0.17      0.27       370
-           9       0.12      0.22      0.15        55
-          10       0.32      0.26      0.29       123
-
-    accuracy                           0.22      1100
-   macro avg       0.22      0.29      0.19      1100
-weighted avg       0.42      0.22      0.25      1100
-```
-max_len = 512  
-batch_size = 4  
-max_epochs = 4  
-bert_name = "bert-base-cased"  
-learning_rate = 2.0e-5   
-param_optimizer = list(model.named_parameters())  
-no_decay = ['bias', 'gamma', 'beta']  
-optimizer_grouped_parameters = [  
-    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],  
-     'weight_decay_rate': 0.01},  
-    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],  
-     'weight_decay_rate': 0.0}  
-]
-warm_up = 0.1
-```
-Start Training!
-epoch #  1      train_loss: 1.987       valid_loss: 1.444                                                                                                                                                   
-
-epoch #  2      train_loss: 1.206       valid_loss: 1.343                                                                                                                                                   
-
-epoch #  3      train_loss: 0.912       valid_loss: 0.986                                                                                                                                                   
-
-epoch #  4      train_loss: 0.676       valid_loss: 1.284                                                                                                                                                   
-
-epoch #  5      train_loss: 0.513       valid_loss: 1.320                                                                                                                                                   
-
-epoch #  6      train_loss: 0.362       valid_loss: 1.709                                                                                                                                                   
-
-Stopping early
-Start Prediction
-              precision    recall  f1-score   support
-
-           0       0.63      0.83      0.72        76
-           1       0.79      0.85      0.82        93
-           2       0.83      0.57      0.68       145
-           3       0.69      0.71      0.70        97
-           4       0.69      0.91      0.78        76
-           5       0.84      0.68      0.75       124
-           6       0.71      0.66      0.68       108
-           7       0.78      0.68      0.73       115
-           8       0.74      0.76      0.75        97
-           9       0.45      0.88      0.60        51
-          10       0.77      0.65      0.71       118
-
-    accuracy                           0.72      1100
-   macro avg       0.72      0.74      0.72      1100
-weighted avg       0.74      0.72      0.72      1100
+$ python BERT_paragraph.py
 ```
 
 ### How can I improve
@@ -100,7 +24,7 @@ weighted avg       0.74      0.72      0.72      1100
 5. usin dev+train after deciding hyperparameters
 6. changing the way of sum up paragraph probability method
 7. using bert-large
-8. resizing paragraph model for not 220
+8. resizing paragraph model for not 128
 ```
 
 ## Paragraph Splitting BERT model
@@ -130,165 +54,49 @@ optimizer_grouped_parameters = [
 ]
 warm_up = 0.1
 ```
-Start Training!
-epoch #  1      train_loss: 1.835       valid_loss: 1.474
-
-epoch #  2      train_loss: 1.201       valid_loss: 1.273   
-
-epoch #  3      train_loss: 0.814       valid_loss: 1.236                    
-
-epoch #  4      train_loss: 0.543       valid_loss: 1.326        
-
-epoch #  5      train_loss: 0.378       valid_loss: 1.422         
-
-Stopping early
-Start Prediction
-              precision    recall  f1-score   support
-
-           0       0.52      0.56      0.54       457
-           1       0.62      0.70      0.66       582
-           2       0.62      0.57      0.60       526
-           3       0.56      0.60      0.58       530
-           4       0.68      0.64      0.66       569
-           5       0.59      0.64      0.61       451
-           6       0.58      0.48      0.53       460
-           7       0.54      0.51      0.52       502
-           8       0.68      0.60      0.63       566
-           9       0.50      0.57      0.53       458
-          10       0.63      0.61      0.62       485
-
-    accuracy                           0.59      5586
-   macro avg       0.59      0.59      0.59      5586
-weighted avg       0.60      0.59      0.59      5586
-
-              precision    recall  f1-score   support
-
-           0       0.90      0.82      0.86       110
-           1       0.96      0.86      0.91       111
-           2       0.76      0.92      0.83        83
-           3       0.83      0.73      0.78       114
-           4       0.88      0.91      0.89        97
-           5       0.85      0.81      0.83       105
-           6       0.76      0.86      0.81        88
-           7       0.85      0.77      0.81       111
-           8       0.76      0.82      0.79        93
-           9       0.82      0.82      0.82       100
-          10       0.79      0.90      0.84        88
-
-    accuracy                           0.83      1100
-   macro avg       0.83      0.84      0.83      1100
-weighted avg       0.84      0.83      0.83      1100
-
-accuracy: 0.8254545454545454
-```
-
-Using train + dev
-```
-Start Prediction
-              precision    recall  f1-score   support
-
-           0       0.52      0.59      0.55       457
-           1       0.63      0.70      0.66       582
-           2       0.62      0.56      0.59       526
-           3       0.55      0.57      0.56       530
-           4       0.69      0.66      0.67       569
-           5       0.61      0.60      0.61       451
-           6       0.57      0.51      0.54       460
-           7       0.53      0.56      0.55       502
-           8       0.67      0.63      0.65       566
-           9       0.54      0.56      0.55       458
-          10       0.67      0.63      0.65       485
-
-    accuracy                           0.60      5586
-   macro avg       0.60      0.60      0.60      5586
-weighted avg       0.60      0.60      0.60      5586
-
-              precision    recall  f1-score   support
-
-           0       0.86      0.78      0.82       110
-           1       0.95      0.84      0.89       113
-           2       0.77      0.92      0.84        84
-           3       0.79      0.71      0.75       111
-           4       0.88      0.90      0.89        98
-           5       0.87      0.86      0.87       101
-           6       0.77      0.86      0.81        90
-           7       0.83      0.78      0.80       107
-           8       0.77      0.80      0.79        96
-           9       0.81      0.87      0.84        93
-          10       0.87      0.90      0.88        97
-
-    accuracy                           0.83      1100
-   macro avg       0.83      0.84      0.83      1100
-weighted avg       0.84      0.83      0.83      1100
-
-accuracy: 0.8336363636363636
-```
-
-## Paragraph Splitting and LSTM BERT model
-max_len = 220
-batch_size = 2
+Total data size: 160434
+Max long: 128
+batch_size = 32
 max_epochs = 4
-num_training_steps = max_epochs * int(9900/batch_size)
-num_warmup_steps = int(num_training_steps*0.1)
-bert_name = "bert-base-uncased"
-learning_rate = 2e-5
-cls_hidden_size = 768
-LSTM_hidden_size = 100
-num_hidden_layer = 1
-```
-epoch #  1      train_loss: 0.816       valid_loss: 0.803
-epoch #  2      train_loss: 0.216       valid_loss: 1.239              
-epoch #  3      train_loss: 0.072       valid_loss: 1.025
-epoch #  4      train_loss: 0.012       valid_loss: 0.949                                                               
-
-Start Prediction
-accuracy: 0.7936363636363636
+learning_rate = 5e-5
               precision    recall  f1-score   support
 
-           0       0.81      0.78      0.79       104
-           1       0.93      0.83      0.88       112
-           2       0.73      0.89      0.80        82
-           3       0.83      0.72      0.77       116
-           4       0.82      0.90      0.86        91
-           5       0.80      0.74      0.77       108
-           6       0.73      0.73      0.73       100
-           7       0.76      0.72      0.74       105
-           8       0.75      0.85      0.80        88
-           9       0.79      0.77      0.78       103
-          10       0.78      0.86      0.82        91
+           0       0.36      0.39      0.37      1188
+           1       0.47      0.53      0.50      1766
+           2       0.46      0.40      0.43      1653
+           3       0.43      0.46      0.45      1814
+           4       0.50      0.45      0.47      1260
+           5       0.45      0.42      0.44      1689
+           6       0.42      0.38      0.40      1882
+           7       0.36      0.36      0.36      1339
+           8       0.50      0.47      0.49      1702
+           9       0.34      0.40      0.37      1702
+          10       0.44      0.45      0.44      1763
 
-    accuracy                           0.79      1100
-   macro avg       0.79      0.80      0.79      1100
-weighted avg       0.80      0.79      0.79      1100```
-```
+    accuracy                           0.43     17758
+   macro avg       0.43      0.43      0.43     17758
+weighted avg       0.43      0.43      0.43     17758
 
-```
-epoch #  1      train_loss: 0.900       valid_loss: 0.608                                       
-epoch #  2      train_loss: 0.061       valid_loss: 0.561
-epoch #  3      train_loss: 0.040       valid_loss: 0.559
-epoch #  4      train_loss: 0.035       valid_loss: 0.562
-
-Start Prediction
-accuracy: 0.8118181818181818
               precision    recall  f1-score   support
 
-           0       0.83      0.73      0.78       114
-           1       0.88      0.85      0.87       103
-           2       0.81      0.80      0.81       101
-           3       0.78      0.74      0.76       105
-           4       0.88      0.91      0.89        97
-           5       0.84      0.81      0.82       104
-           6       0.78      0.76      0.77       102
-           7       0.76      0.81      0.78        94
-           8       0.73      0.78      0.76        93
-           9       0.80      0.83      0.82        96
-          10       0.84      0.92      0.88        91
+           0       0.82      0.83      0.82        99
+           1       0.95      0.90      0.92       106
+           2       0.78      0.87      0.82        90
+           3       0.87      0.69      0.77       127
+           4       0.85      0.93      0.89        91
+           5       0.84      0.90      0.87        93
+           6       0.81      0.81      0.81       100
+           7       0.82      0.75      0.78       110
+           8       0.72      0.86      0.78        84
+           9       0.86      0.85      0.86       101
+          10       0.90      0.91      0.90        99
 
-    accuracy                           0.81      1100
-   macro avg       0.81      0.81      0.81      1100
-weighted avg       0.81      0.81      0.81      1100
+    accuracy                           0.84      1100
+   macro avg       0.84      0.84      0.84      1100
+weighted avg       0.84      0.84      0.84      1100
+
+0.8381818181818181
 ```
-
 ## Domain-specific pretraining
 ```
 python run_pretraining.py   --input_file=tmp/tf_examples.tfrecord   --output_dir=tmp/pretraining_output   --do_train=True   --do_eval=True   --bert_config_file=bert_data/uncased_L-12_H-768_A-12/bert_config.json   --init_checkpoint=bert_data/uncased_L-12_H-768_A-12/bert_model.ckpt   --train_batch_size=16   --max_seq_length=128   --max_predictions_per_seq=20   --num_train_steps=50000   --num_warmup_steps=5000 --learning_rate=2e-5

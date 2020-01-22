@@ -5,3 +5,4 @@ tqdm==4.35.0
 sklearn
 matplotlib
 regex
+transformers==2.2.1
