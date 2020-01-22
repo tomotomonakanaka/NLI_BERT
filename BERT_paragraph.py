@@ -29,21 +29,21 @@ print("device",device)
 
 
 # path
-TRAIN_PATH = "TOEFL11/train_paragraph.csv"
-DEV_PATH = "TOEFL11/dev_paragraph.csv"
-TEST_PATH = "TOEFL11/test_paragraph.csv"
+TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
+DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
+TEST_PATH = "TOEFL_sentence/test_sentence.csv"
 TEST_ROW_PATH = "TOEFL11/test.csv"
 modelPATH = "save_model/paragraphModel"
 
 
 # define parameter
-max_len = 220
-batch_size = 16
-max_epochs = 5
-num_training_steps = max_epochs * int(50310/batch_size)
+max_len = 128
+batch_size = 32
+max_epochs = 4
+num_training_steps = max_epochs * int(161434/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 2e-5
+learning_rate = 5e-5
 
 
 # define loader
@@ -77,7 +77,7 @@ scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warm
 def train_epoch(model, optimizer, train_loader):
     model.train()
     train_loss = total = 0
-    for inputs, mask, segment, target, text in tqdm(train_loader,
+    for inputs, mask, segment, target, text, proficiency, num_tokens, position in tqdm(train_loader,
                                                              desc='Training',
                                                              leave=False):
         optimizer.zero_grad()
@@ -94,7 +94,7 @@ def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for inputs, mask, segment, target, text in tqdm(valid_loader,
+        for inputs, mask, segment, target, text, proficiency, num_tokens, position in tqdm(valid_loader,
                                                                  desc='Validating',
                                                                  leave=False):
             loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
@@ -145,7 +145,7 @@ model.eval()
 y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
-    for inputs, mask, segment, target, text in test_loader:
+    for inputs, mask, segment, target, text, proficiency, num_tokens, position in test_loader:
         loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
 
         logits = logits.detach().cpu().numpy()

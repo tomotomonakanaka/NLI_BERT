@@ -30,17 +30,20 @@ class ToeflDataset(Dataset):
         sequences = df.indexed_tokens.tolist()
         max_sequence_length = max(len(x) for x in sequences)
 
-        self.inputs_lst, self.masks, self.segments = [], [], []
+        self.inputs_lst, self.masks, self.segments, self.num_tokens = [], [], [], []
         for sequence in sequences:
             self.inputs_lst.append(sequence + (max_sequence_length - len(sequence)) * [0])
             self.masks.append(len(sequence) * [1] + (max_sequence_length - len(sequence)) * [0])
             self.segments.append(max_sequence_length * [0])
+            self.num_tokens.append(len(sequence))
 
         self.targets = df.L1.tolist()
         self.texts = df.TextFile.tolist()
+        self.proficiency = df.Proficiency.tolist()
+        self.position = df.Position.tolist()
 
     def __getitem__(self, i):
-        return self.inputs_lst[i], self.masks[i], self.segments[i], self.targets[i], self.texts[i]
+        return self.inputs_lst[i], self.masks[i], self.segments[i], self.targets[i], self.texts[i], self.proficiency[i], self.num_tokens[i], self.position[i]
 
     def __len__(self):
         return len(self.inputs_lst)
@@ -50,11 +53,14 @@ def collate(batch):
     mask = torch.LongTensor([item[1] for item in batch])
     segment = torch.LongTensor([item[2] for item in batch])
     target = torch.LongTensor([item[3] for item in batch])
+    proficiency = torch.LongTensor([item[5] for item in batch])
+    num_tokens = torch.LongTensor([item[6] for item in batch])
+    position = torch.LongTensor([item[7] for item in batch])
     text = [item[4] for item in batch]
 
-    inputs, mask, segment, target = map(
+    inputs, mask, segment, target, proficiency, num_tokens, position = map(
         lambda x: x.to(device),
-        (inputs, mask, segment, target),
+        (inputs, mask, segment, target, proficiency, num_tokens, position),
     )
 
-    return inputs, mask, segment, target, text
+    return inputs, mask, segment, target, text, proficiency, num_tokens, position
