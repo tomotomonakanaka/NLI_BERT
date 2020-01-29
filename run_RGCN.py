@@ -1,4 +1,4 @@
-from model.GCN import *
+from model.RGCN import *
 import networkx as nx
 import time
 import numpy as np
@@ -15,10 +15,16 @@ from sklearn.metrics import classification_report
 device = th.device('cuda' if th.cuda.is_available() else 'cpu')
 print("device",device)
 
+infile = open('graph','rb')
+g1 = pickle.load(infile)
+g1 = g1.to(device)
+print(type(g1))
+infile.close()
+
 infile = open('graph_add_edge','rb')
-g = pickle.load(infile)
-g = g.to(device)
-print(type(g))
+g2 = pickle.load(infile)
+g2 = g2.to(device)
+print(type(g2))
 infile.close()
 
 infile = open('hiddens','rb')
@@ -49,10 +55,10 @@ test_mask = pickle.load(infile)
 # test_mask = test_mask.to(device)
 infile.close()
 
-net = GCN(g,768,128,11,2,F.relu,0.1).to(device)
+net = RGCN(g1,g2,768,128,11,1,F.relu,0.1).to(device)
 
 
-def evaluate(model, g, features, labels, mask):
+def evaluate(model, features, labels, mask):
     model.eval()
     with th.no_grad():
         logits = model(features)
@@ -80,7 +86,7 @@ for epoch in range(50):
     if epoch >=3:
         dur.append(time.time() - t0)
 
-    acc = evaluate(net, g, features, labels, test_mask)
+    acc = evaluate(net, features, labels, test_mask)
     print("Epoch {:05d} | Loss {:.4f} | Test Acc {:.4f} | Time(s) {:.4f}".format(
             epoch, loss.item(), acc, np.mean(dur)))
 

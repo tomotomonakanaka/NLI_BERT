@@ -8,20 +8,24 @@ import torch
 import torch.nn as nn
 from dgl.nn.pytorch import GraphConv
 
-class GCN(nn.Module):
+class RGCN(nn.Module):
     def __init__(self,
-                 g,
+                 g1,
+                 g2,
                  in_feats,
                  n_hidden,
                  n_classes,
                  n_layers,
                  activation,
                  dropout):
-        super(GCN, self).__init__()
-        self.g = g
+        super(RGCN, self).__init__()
+        self.g1 = g1
+        self.g2 = g2
+
         self.layers = nn.ModuleList()
         # input layer
         self.layers.append(GraphConv(in_feats, n_hidden, activation=activation))
+        self.layers.append(GraphConv(n_hidden, n_hidden, activation=activation))
         # hidden layers
         for i in range(n_layers - 1):
             self.layers.append(GraphConv(n_hidden, n_hidden, activation=activation))
@@ -34,5 +38,7 @@ class GCN(nn.Module):
         for i, layer in enumerate(self.layers):
             if i != 0:
                 h = self.dropout(h)
-            h = layer(self.g, h)
+                h = layer(self.g1, h)
+            else:
+                h = layer(self.g2, h)
         return h

@@ -34,26 +34,6 @@ $ python BERT_paragraph.py
 
 #### Back Ground
 ```
-・If I want to classify Texts by contents, we have to consider all of the sentences in the Texts
-- This is because the topic of text is at the beginning or ending
-- deviding text decrease the accuracy of classification.
-・However, if I want to classify the text by the structure, we don't have to consider it.
-```
-max_len = 220
-batch_size = 16
-max_epochs = 5
-bert_name = "bert-base-uncased"  
-learning_rate = 2.0e-5   
-param_optimizer = list(model.named_parameters())  
-no_decay = ['bias', 'gamma', 'beta']  
-optimizer_grouped_parameters = [  
-    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],  
-     'weight_decay_rate': 0.01},  
-    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],  
-     'weight_decay_rate': 0.0}  
-]
-warm_up = 0.1
-```
 Total data size: 160434
 Max long: 128
 batch_size = 32
