@@ -34,11 +34,12 @@ TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
 DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
 TEST_PATH = "TOEFL_sentence/test_sentence.csv"
 modelPATH = "save_model/initialBERT"
+savePATH = "save_model/LSTMModel"
 
 # define parameter
-max_len = 68
-batch_size = 8
-max_epochs = 4
+max_len = 128
+batch_size = 16
+max_epochs = 8
 num_training_steps = max_epochs * int(9900/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
@@ -57,7 +58,7 @@ test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=collate_LSTM)
 
 # load model
 print("Load Model")
-model = LSTM_BERT(modelPATH,cls_hidden_size,LSTM_hidden_size)
+model = LSTM_BERT(bert_name,cls_hidden_size,LSTM_hidden_size)
 model = model.to(device)
 
 # define optimizer
@@ -116,9 +117,13 @@ def validate_epoch(model, valid_loader):
 print("Start Training!")
 n_epochs = 0
 train_losses, valid_losses = [], []
+
+count = 0
 while True:
     train_loss = train_epoch(model, optimizer, train_loader, batch_size)
     valid_loss = validate_epoch(model, valid_loader)
+    torch.save(model, savePATH+"{}".format(count))
+    count+=1
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
@@ -136,6 +141,8 @@ while True:
         break
 
 
+torch.save(model, savePATH)
+
 # prediction of paragraph
 print("Start Prediction")
 model.eval()
@@ -143,13 +150,13 @@ y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
     for inputs, mask, segment, target, roop, length in test_loader:
-        logits, loss, target = model(inputs, segment, mask, target, roop, length)[:]
+        logits, loss, targets = model(inputs, segment, mask, target, roop, length)[:]
 
         logits = logits.detach().cpu().numpy()
         predictions = np.argmax(logits, axis=1)
-        target = target.cpu().numpy()
+        target = target[0][0]
 
-        y_true.extend(target)
+        y_true.append(target)
         y_pred.extend(predictions)
         y_logits.extend(logits)
 y_true = np.array(y_true)

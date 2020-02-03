@@ -1,10 +1,11 @@
 # NLI_MODELS
 ## Setup
 ```
-$ unzip TOEFL11.zip
+$ unzip TOEFL_sentence.zip
 $ pip install pytorch # depending on your device
 $ pip install dgl # depending on your device
 $ pip install -r requirements.txt
+$ mkdir save_model
 ```
 ## run BERT model
 ```
