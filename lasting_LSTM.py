@@ -33,17 +33,17 @@ print("device",device)
 TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
 DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
 TEST_PATH = "TOEFL_sentence/test_sentence.csv"
-modelPATH = "save_model/initialBERT"
-savePATH = "save_model/LSTMModel"
+modelPATH = "save_model/LSTMModel1"
+savePATH = "save_model/LSTMModel1"
 
 # define parameter
 max_len = 128
-batch_size = 8
-max_epochs = 5
+batch_size = 4
+max_epochs = 8
 num_training_steps = max_epochs * int(9900/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 5e-5
+learning_rate = 6e-5
 cls_hidden_size = 768
 LSTM_hidden_size = 32
 
@@ -58,8 +58,7 @@ test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=collate_LSTM)
 
 # load model
 print("Load Model")
-model = LSTM_BERT(bert_name,cls_hidden_size,LSTM_hidden_size)
-model = model.to(device)
+model = torch.load(modelPATH)
 
 # define optimizer
 param_optimizer = list(model.named_parameters())
@@ -73,7 +72,7 @@ optimizer_grouped_parameters = [
      'weight_decay_rate': 0.0}]
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 # scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
-scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
+# scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
 
 # define training and validation
@@ -93,11 +92,11 @@ def train_epoch(model, optimizer, train_loader, batch_size):
         if total % batch_size == 0: # accumulation
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
             optimizer.zero_grad()
     torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     optimizer.step()
-    scheduler.step()
+    # scheduler.step()
     optimizer.zero_grad()
     return train_loss / total
 
@@ -108,7 +107,7 @@ def validate_epoch(model, valid_loader):
         for inputs, mask, segment, target, roop, length in tqdm(valid_loader,
                                                                  desc='Validating',
                                                                  leave=False):
-            loss = model(inputs, segment, mask, target, roop, length)[1] ''' you should change '''
+            loss = model(inputs, segment, mask, target, roop, length)[1]
             valid_loss += loss.item()
             total += 1
         return valid_loss / total

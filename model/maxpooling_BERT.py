@@ -5,24 +5,16 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 from model.BERT import BertForToefl
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class LSTM_BERT(nn.Module):
-    def __init__(self, modelPATH, input_size, hidden_size, output_size=11, batch_first=True, num_layers=2, bidirectional=True, dropout=0.0):
-        super(LSTM_BERT, self).__init__()
+class MAX_BERT(nn.Module):
+    def __init__(self, modelPATH, output_size=11, dropout=0.0):
+        super(MAX_BERT, self).__init__()
 
         # load the model from model PATH
         self.BERTmodel = BertForToefl.from_pretrained(modelPATH, num_labels=11,output_hidden_states=True)
 
-        # LSTM model
-        self.lstm = nn.LSTM(input_size=input_size,
-                           hidden_size=hidden_size,
-                           num_layers=num_layers,
-                           bidirectional=bidirectional,
-                           batch_first=batch_first,
-                           dropout = dropout).to(device)
-
         # other layers
         self.dropout = nn.Dropout(p=dropout)
-        self.hidden2out = nn.Linear(hidden_size, output_size).to(device)
+        self.hidden2out = nn.Linear(768, output_size).to(device)
         self.logsoftmax = nn.LogSoftmax().to(device)
 
     def forward(self,inputsTensor,segmentTensor,maskTensor,targetTensor,roop,length):
@@ -34,9 +26,8 @@ class LSTM_BERT(nn.Module):
         target = targetTensor[0][:length[0]]
         hidden = self.BERTmodel(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[3]
         hidden = hidden.view(1,-1,768)
-        hidden, (h, c) = self.lstm(hidden)
-        lstm_hiddens = h[-1]
-        outputs = self.hidden2out(lstm_hiddens)
+        hidden_max, _ = torch.max(hidden,1)
+        outputs = self.hidden2out(hidden_max)
         outputs = self.logsoftmax(outputs)
 
         loss_fct = nn.CrossEntropyLoss()

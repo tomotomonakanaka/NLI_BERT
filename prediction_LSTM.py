@@ -32,10 +32,10 @@ TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
 DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
 TEST_PATH = "TOEFL_sentence/test_sentence.csv"
 modelPATH = "save_model/initialBERT"
-savePATH = "save_model/LSTMModel"
+savePATH = "save_model/LSTMModel3"
 
 # define parameter
-max_len = 68
+max_len = 128
 batch_size = 16
 max_epochs = 4
 num_training_steps = max_epochs * int(9900/batch_size)
@@ -59,7 +59,7 @@ y_true, y_pred = [], []
 y_logits = []
 i = 0
 with torch.no_grad():
-    for inputs, mask, segment, target, roop, length in test_loader:
+    for inputs, mask, segment, target, roop, length in tqdm(test_loader):
         logits, loss, targets = model(inputs, segment, mask, target, roop, length)[:]
 
         logits = logits.detach().cpu().numpy()
