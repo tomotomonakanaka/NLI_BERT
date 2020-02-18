@@ -19,51 +19,44 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from model.LSTM_data_nograd import *
-from model.LSTM import *
+from model.data import ToeflDataset, collate
 
 tqdm.pandas()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
-
-
 # path
-TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
-DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
-TEST_PATH = "TOEFL_sentence/test_sentence.csv"
-TEST_ROW_PATH = "TOEFL11_sentence/test.csv"
-modelPATH = "save_model/sentencesBERT"
+TRAIN_PATH = "TOEFL11/train.csv"
+DEV_PATH = "TOEFL11/dev.csv"
+TEST_PATH = "TOEFL11/test.csv"
+modelPATH = "save_model/simpleModel"
 
 # define parameter
-max_len = 128
-batch_size = 16
-max_epochs = 7
-num_training_steps = max_epochs * int(1100/batch_size)
+max_len = 512
+batch_size = 8
+max_epochs = 5
+num_training_steps = max_epochs * int(9900/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 1e-3
-cls_hidden_size = 768
-LSTM_hidden_size = 768
+learning_rate = 5e-5
 
 # define loader
-valid_dataset = LSTMDataset(DEV_PATH, max_len,bert_name, modelPATH)
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
-test_dataset = LSTMDataset(TEST_PATH, max_len,bert_name, modelPATH)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
-
+train_dataset = ToeflDataset(TRAIN_PATH, max_len, bert_name)
+dev_dataset = ToeflDataset(DEV_PATH, max_len, bert_name)
+test_dataset = ToeflDataset(TEST_PATH, max_len, bert_name)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate,shuffle='True')
+valid_loader = DataLoader(dev_dataset, batch_size=batch_size, collate_fn=collate)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate)
 
 # load model
 print("Load Model")
-model = LSTM(cls_hidden_size,LSTM_hidden_size, max_len)
+model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11)
 model = model.to(device)
 
 # define optimizer
 param_optimizer = list(model.named_parameters())
 no_decay = ['bias', 'gamma', 'beta']
-for n,p in param_optimizer:
-    print(n)
 optimizer_grouped_parameters = [
     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
      'weight_decay_rate': 0.01},
@@ -72,17 +65,15 @@ optimizer_grouped_parameters = [
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
 
-# define training and validation
+# define training and calidation
 def train_epoch(model, optimizer, train_loader):
     model.train()
-    count = 0
     train_loss = total = 0
-    for hiddens, target, length, num_tokens in tqdm(train_loader,desc='Training',leave=False):
-        if count == 0:
-            print(hiddens.shape)
-            count += 1
+    for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(train_loader,
+                                                             desc='Training',
+                                                             leave=False):
         optimizer.zero_grad()
-        loss = model(hiddens, target, length, num_tokens)[1]
+        loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
         train_loss += loss.item()
         total += 1
         loss.backward()
@@ -95,20 +86,21 @@ def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for hiddens, target, length, num_tokens in tqdm(valid_loader,desc='Validating',leave=False):
-            loss = model(hiddens, target, length, num_tokens)[1]
+        for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(valid_loader,
+                                                                 desc='Validating',
+                                                                 leave=False):
+            loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
             valid_loss += loss.item()
             total += 1
         return valid_loss / total
-
 
 # training
 print("Start Training!")
 n_epochs = 0
 train_losses, valid_losses = [], []
 while True:
-    train_loss = train_epoch(model, optimizer, valid_loader)
-    valid_loss = validate_epoch(model, test_loader)
+    train_loss = train_epoch(model, optimizer, train_loader)
+    valid_loss = validate_epoch(model, valid_loader)
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
@@ -125,7 +117,6 @@ while True:
     if n_epochs >= max_epochs:
         break
 
-
 # save loss graph
 epoch_ticks = range(1, n_epochs + 1)
 plt.plot(epoch_ticks, train_losses)
@@ -137,23 +128,20 @@ plt.ylabel('Loss')
 plt.xticks(epoch_ticks)
 plt.savefig('loss.png')
 
-
-# prediction of paragraph
+# prediction
 print("Start Prediction")
 model.eval()
 y_true, y_pred = [], []
-y_logits = []
 with torch.no_grad():
-    for hiddens, target, length, num_tokens in test_loader:
-        logits, loss, target = model(hiddens, target, length, num_tokens)[:]
+    for inputs, mask, segment, target, text, proficiency, num_tokens in test_loader:
+        loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
 
         logits = logits.detach().cpu().numpy()
         predictions = np.argmax(logits, axis=1)
         target = target.cpu().numpy()
 
-        y_true.extend(target)
-        y_pred.extend(predictions)
-        y_logits.extend(logits)
-y_true = np.array(y_true)
-print(np.sum(y_true==y_pred)/len(y_true))
+        y_true.extend(predictions)
+        y_pred.extend(target)
+
 print(classification_report(y_pred, y_true))
+torch.save(model, modelPATH)

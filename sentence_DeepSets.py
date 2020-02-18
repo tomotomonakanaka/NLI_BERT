@@ -18,9 +18,10 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+import pickle
 
-from model.data import ToeflDataset, collate
-from model.BERT import BertForToefl
+from model.finetuned_BERT_data import *
+from model.DeepSets import *
 
 tqdm.pandas()
 
@@ -28,60 +29,67 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
 
+
 # path
 TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
+TRAIN_OUT = "TOEFL_sentence/train_out"
 DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
+DEV_OUT = "TOEFL_sentence/dev_out"
 TEST_PATH = "TOEFL_sentence/test_sentence.csv"
-TEST_ROW_PATH = "TOEFL11/test.csv"
+TEST_OUT = "TOEFL_sentence/test_out"
+TEST_ROW_PATH = "TOEFL11_sentence/test.csv"
 modelPATH = "save_model/paragraphModel"
-
 
 # define parameter
 max_len = 128
-batch_size = 32
-max_epochs = 4
-num_training_steps = max_epochs * int(161434/batch_size)
+batch_size = 16
+max_epochs = 7
+num_training_steps = max_epochs * int(1100/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
-learning_rate = 6e-5
+learning_rate = 1e-3
 
+# datasets and dataloaders
+train_dataset = FinetunedData(TRAIN_PATH, max_len,bert_name, modelPATH)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
+train_out = open(TRAIN_OUT,'wb')
+pickle.dump(train_dataset, train_out)
+train_out.close()
+valid_dataset = FinetunedData(DEV_PATH, max_len,bert_name, modelPATH)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
+valid_out = open(DEV_OUT,'wb')
+pickle.dump(valid_dataset, valid_out)
+valid_out.close()
+test_dataset = FinetunedData(TEST_PATH, max_len,bert_name, modelPATH)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate_LSTM)
+test_out = open(TEST_OUT,'wb')
+pickle.dump(test_dataset, test_out)
+test_out.close()
 
-# define loader
-train_dataset = ToeflDataset(TRAIN_PATH, max_len, bert_name)
-valid_dataset = ToeflDataset(DEV_PATH, max_len, bert_name)
-test_dataset = ToeflDataset(TEST_PATH, max_len, bert_name)
-train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate,shuffle='True')
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate)
 
 
 # load model
 print("Load Model")
-model = BertForToefl.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
+model = DeepSets()
 model = model.to(device)
-
 
 # define optimizer
 param_optimizer = list(model.named_parameters())
-no_decay = ['bias', 'gamma', 'beta']
-optimizer_grouped_parameters = [
-    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-     'weight_decay_rate': 0.01},
-    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
-     'weight_decay_rate': 0.0}]
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
-
 
 # define training and validation
 def train_epoch(model, optimizer, train_loader):
     model.train()
+    count = 0
     train_loss = total = 0
-    for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(train_loader,
-                                                             desc='Training',
-                                                             leave=False):
+    for hiddens, target, length, num_tokens in tqdm(train_loader,desc='Training',leave=False):
+        if count == 0:
+            print("hiddens shape: ", hiddens.shape)
+            print("length shape: ", length.shape)
+            count += 1
         optimizer.zero_grad()
-        loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
+        loss = model(hiddens, length, target)[1]
         train_loss += loss.item()
         total += 1
         loss.backward()
@@ -94,10 +102,8 @@ def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(valid_loader,
-                                                                 desc='Validating',
-                                                                 leave=False):
-            loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
+        for hiddens, target, length, num_tokens in tqdm(valid_loader,desc='Validating',leave=False):
+            loss = model(hiddens, length, target)[1]
             valid_loss += loss.item()
             total += 1
         return valid_loss / total
@@ -108,8 +114,8 @@ print("Start Training!")
 n_epochs = 0
 train_losses, valid_losses = [], []
 while True:
-    train_loss = train_epoch(model, optimizer, train_loader)
-    valid_loss = validate_epoch(model, valid_loader)
+    train_loss = train_epoch(model, optimizer, valid_loader)
+    valid_loss = validate_epoch(model, test_loader)
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
@@ -145,42 +151,16 @@ model.eval()
 y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
-    for inputs, mask, segment, target, text, proficiency, num_tokens in test_loader:
-        loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
+    for hiddens, target, length, num_tokens in test_loader:
+        logits, loss, target = model(hiddens,length,target)[:]
 
         logits = logits.detach().cpu().numpy()
         predictions = np.argmax(logits, axis=1)
         target = target.cpu().numpy()
 
-        y_true.extend(predictions)
-        y_pred.extend(target)
+        y_true.extend(target)
+        y_pred.extend(predictions)
         y_logits.extend(logits)
+y_true = np.array(y_true)
+print(np.sum(y_true==y_pred)/len(y_true))
 print(classification_report(y_pred, y_true))
-
-
-
-# prediction of text
-test_df_true = pd.read_csv(TEST_ROW_PATH)
-y_row_true = test_df_true.L1.values
-
-test_df_predict = pd.read_csv(TEST_PATH)
-test_array_predict = test_df_predict.TextFile.values
-test_sentence_predict = test_df_predict.Sentence.values
-
-preT = None
-preA = np.array([0,0,0,0,0,0,0,0,0,0,0])
-ans = []
-for i in range(len(test_array_predict)):
-    if preT == test_array_predict[i]:
-        preA += np.array(y_logits[i]) #* len(test_sentence_predict[i])
-    else:
-        if preT!=None:
-            ans.append(np.argmax(preA))
-        preA = np.array(y_logits[i]) #* len(test_sentence_predict[i])
-        preT = test_array_predict[i]
-ans.append(np.argmax(preA))
-
-print(classification_report(ans, y_row_true))
-print(np.sum(ans==y_row_true)/len(ans))
-
-torch.save(model, modelPATH)

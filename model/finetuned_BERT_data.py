@@ -8,7 +8,7 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 tqdm.pandas()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class LSTMDataset(Dataset):
+class FinetunedData(Dataset):
     def __init__(self, data_path, max_len, bert_config,modelPATH):
 
         self.BERTmodel = torch.load(modelPATH)
@@ -24,7 +24,7 @@ class LSTMDataset(Dataset):
         counts = {}
         self.max_counts = 0;
         with torch.no_grad():
-            for inputs, mask, segment, target, text, proficiency, num_tokens, position in tqdm(loader,desc='model_output',leave=False):
+            for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(loader,desc='model_output',leave=False):
                 hidden = self.BERTmodel(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[3]
                 if (text[0] not in hiddens_dicts):
                     hiddens_dicts[text[0]] = []
