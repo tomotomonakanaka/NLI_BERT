@@ -14,7 +14,7 @@ class NgramDataset(Dataset):
     def __init__(self, data_path, ngram2id=None):
         df = pd.read_csv(data_path)
 
-        # making n-gram dict
+        # Train
         if ngram2id == None:
             self.ngram2id = {}
             self.ngrams_data = []
@@ -38,7 +38,7 @@ class NgramDataset(Dataset):
                 self.ngrams_data.append(ngram_ids)
                 self.num_ngrams.append(len(ngram_ids))
 
-        # using n-gram dict
+        # Dev
         else:
             self.ngram2id = ngram2id
             self.ngrams_data = []
