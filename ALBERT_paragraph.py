@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import regex as re
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW,get_linear_schedule_with_warmup #get_constant_schedule_with_warmup
+from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import classification_report
 from tqdm import tqdm, tqdm_notebook
 
@@ -19,8 +19,8 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from model.DeepSets_data import *
-from model.DeepSets import *
+from model.albert_data import ToeflDataset, collate
+from model.ALBERT import AlbertForToefl
 
 tqdm.pandas()
 
@@ -28,42 +28,42 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
 
-
 # path
 TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
 DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
 TEST_PATH = "TOEFL_sentence/test_sentence.csv"
-modelPATH = "save_model/paragraphBERT"
-savePATH = "save_model/DeepSetsModel"
+TEST_ROW_PATH = "TOEFL11/test.csv"
+modelPATH = "save_model/paragraphalbertModel"
+
 
 # define parameter
 max_len = 128
-batch_size = 8
-max_epochs = 5
-num_training_steps = max_epochs * int(9900/batch_size)
+batch_size = 12
+max_epochs = 4
+num_training_steps = max_epochs * int(161434/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
-bert_name = "bert-base-uncased"
-learning_rate = 5e-5
+bert_name = "albert-xxlarge-v2"
+learning_rate = 6e-5
+
 
 # define loader
-train_dataset = DeepSetsDataset(TRAIN_PATH, max_len,bert_name)
-train_loader = DataLoader(train_dataset, batch_size=1, collate_fn=collate_DeepSets, shuffle='True')
-valid_dataset = DeepSetsDataset(DEV_PATH, max_len,bert_name)
-valid_loader = DataLoader(valid_dataset, batch_size=1, collate_fn=collate_DeepSets)
-test_dataset = DeepSetsDataset(TEST_PATH, max_len,bert_name)
-test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=collate_DeepSets)
+train_dataset = ToeflDataset(TRAIN_PATH, max_len, bert_name)
+valid_dataset = ToeflDataset(DEV_PATH, max_len, bert_name)
+test_dataset = ToeflDataset(TEST_PATH, max_len, bert_name)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate,shuffle='True')
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate)
 
 
 # load model
 print("Load Model")
-model = DeepSets(modelPATH, multitask=True)
+model = AlbertForToefl.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
 model = model.to(device)
+
 
 # define optimizer
 param_optimizer = list(model.named_parameters())
 no_decay = ['bias', 'gamma', 'beta']
-for n,p in param_optimizer:
-    print(n)
 optimizer_grouped_parameters = [
     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
      'weight_decay_rate': 0.01},
@@ -71,42 +71,33 @@ optimizer_grouped_parameters = [
      'weight_decay_rate': 0.0}]
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
-# scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
 
 # define training and validation
-def train_epoch(model, optimizer, train_loader, batch_size):
+def train_epoch(model, optimizer, train_loader):
     model.train()
-    train_loss = 0
-    total = 0
-    optimizer.zero_grad()
-    for inputs, mask, segment, target, roop, length in tqdm(train_loader,
+    train_loss = total = 0
+    for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(train_loader,
                                                              desc='Training',
                                                              leave=False):
-        loss = model(inputs, segment, mask, target, roop, length)[1]
+        optimizer.zero_grad()
+        loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
         train_loss += loss.item()
         total += 1
         loss.backward()
-
-        if total % batch_size == 0: # accumulation
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-    optimizer.step()
-    scheduler.step()
-    optimizer.zero_grad()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        scheduler.step()
     return train_loss / total
 
 def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for inputs, mask, segment, target, roop, length in tqdm(valid_loader,
+        for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(valid_loader,
                                                                  desc='Validating',
                                                                  leave=False):
-            loss = model(inputs, segment, mask, target, roop, length)[1]
+            loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
             valid_loss += loss.item()
             total += 1
         return valid_loss / total
@@ -116,13 +107,9 @@ def validate_epoch(model, valid_loader):
 print("Start Training!")
 n_epochs = 0
 train_losses, valid_losses = [], []
-
-count = 0
 while True:
-    train_loss = train_epoch(model, optimizer, train_loader, batch_size)
+    train_loss = train_epoch(model, optimizer, train_loader)
     valid_loss = validate_epoch(model, valid_loader)
-    # torch.save(model, savePATH+"{}".format(count))
-    count+=1
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
@@ -140,7 +127,17 @@ while True:
         break
 
 
-torch.save(model, savePATH)
+# save loss graph
+epoch_ticks = range(1, n_epochs + 1)
+plt.plot(epoch_ticks, train_losses)
+plt.plot(epoch_ticks, valid_losses)
+plt.legend(['Train Loss', 'Valid Loss'])
+plt.title('Losses')
+plt.xlabel('Epoch #')
+plt.ylabel('Loss')
+plt.xticks(epoch_ticks)
+plt.savefig('loss.png')
+
 
 # prediction of paragraph
 print("Start Prediction")
@@ -148,16 +145,42 @@ model.eval()
 y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
-    for inputs, mask, segment, target, roop, length in test_loader:
-        logits, loss, targets = model(inputs, segment, mask, target, roop, length)[:]
+    for inputs, mask, segment, target, text, proficiency, num_tokens in test_loader:
+        loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
 
         logits = logits.detach().cpu().numpy()
         predictions = np.argmax(logits, axis=1)
-        target = target[0][0]
+        target = target.cpu().numpy()
 
-        y_true.append(target)
-        y_pred.extend(predictions)
+        y_true.extend(predictions)
+        y_pred.extend(target)
         y_logits.extend(logits)
-y_true = np.array(y_true)
-print(np.sum(y_true==y_pred)/len(y_true))
 print(classification_report(y_pred, y_true))
+
+
+
+# prediction of text
+test_df_true = pd.read_csv(TEST_ROW_PATH)
+y_row_true = test_df_true.L1.values
+
+test_df_predict = pd.read_csv(TEST_PATH)
+test_array_predict = test_df_predict.TextFile.values
+test_sentence_predict = test_df_predict.Sentence.values
+
+preT = None
+preA = np.array([0,0,0,0,0,0,0,0,0,0,0])
+ans = []
+for i in range(len(test_array_predict)):
+    if preT == test_array_predict[i]:
+        preA += np.array(y_logits[i]) #* len(test_sentence_predict[i])
+    else:
+        if preT!=None:
+            ans.append(np.argmax(preA))
+        preA = np.array(y_logits[i]) #* len(test_sentence_predict[i])
+        preT = test_array_predict[i]
+ans.append(np.argmax(preA))
+
+print(classification_report(ans, y_row_true))
+print(np.sum(ans==y_row_true)/len(ans))
+
+torch.save(model, modelPATH)

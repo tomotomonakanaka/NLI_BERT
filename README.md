@@ -3,9 +3,38 @@
 ```
 $ unzip TOEFL_sentence.zip
 $ pip install pytorch # depending on your device
-$ pip install dgl # depending on your device
 $ pip install -r requirements.txt
 $ mkdir save_model
+```
+### run simple BERT model ###
+```
+$ python simple_BERT.py
+```
+
+```
+epoch #  1	train_loss: 1.769	valid_loss: 1.211
+epoch #  2	train_loss: 0.935	valid_loss: 0.843
+epoch #  3	train_loss: 0.529	valid_loss: 0.991
+epoch #  4	train_loss: 0.270	valid_loss: 1.084
+epoch #  5	train_loss: 0.113	valid_loss: 1.196
+
+              precision    recall  f1-score   support
+
+           0       0.69      0.79      0.74       100
+           1       0.86      0.86      0.86       100
+           2       0.79      0.77      0.78       100
+           3       0.69      0.67      0.68       100
+           4       0.75      0.85      0.80       100
+           5       0.75      0.77      0.76       100
+           6       0.72      0.71      0.72       100
+           7       0.72      0.73      0.72       100
+           8       0.80      0.70      0.74       100
+           9       0.76      0.71      0.74       100
+          10       0.79      0.76      0.78       100
+
+    accuracy                           0.76      1100
+   macro avg       0.76      0.76      0.76      1100
+weighted avg       0.76      0.76      0.76      1100
 ```
 ## run BERT model
 ```

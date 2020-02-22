@@ -1,15 +1,16 @@
-from transformers import BertPreTrainedModel,BertModel
+from transformers.modeling_albert import AlbertPreTrainedModel
+from transformers import AlbertModel
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 
-class BertForToefl(BertPreTrainedModel):
+class AlbertForToefl(AlbertPreTrainedModel):
     def __init__(self, config):
-        super(BertForToefl, self).__init__(config)
+        super(AlbertForToefl, self).__init__(config)
         self.num_labels = config.num_labels
 
-        self.bert = BertModel(config)
-        self.bert = nn.DataParallel(self.bert, device_ids=[0,1], output_device=0)
+        self.albert = AlbertModel(config)
+        self.albert = nn.DataParallel(self.bert, device_ids=[0,1], output_device=0)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, self.config.num_labels)
 
@@ -18,7 +19,7 @@ class BertForToefl(BertPreTrainedModel):
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None,
                 position_ids=None, head_mask=None, inputs_embeds=None, labels=None):
 
-        outputs = self.bert(input_ids,
+        outputs = self.albert(input_ids,
                             attention_mask=attention_mask,
                             token_type_ids=token_type_ids,
                             position_ids=position_ids,
