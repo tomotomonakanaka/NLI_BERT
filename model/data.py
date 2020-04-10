@@ -39,9 +39,10 @@ class ToeflDataset(Dataset):
 
         self.targets = df.L1.tolist()
         self.texts = df.TextFile.tolist()
+        self.prompt = df.Prompt.tolist()
 
     def __getitem__(self, i):
-        return self.inputs_lst[i], self.masks[i], self.segments[i], self.targets[i], self.texts[i], self.num_tokens[i]
+        return self.inputs_lst[i], self.masks[i], self.segments[i], self.targets[i], self.texts[i], self.num_tokens[i], self.prompt[i]
 
     def __len__(self):
         return len(self.inputs_lst)
@@ -52,11 +53,12 @@ def collate(batch):
     segment = torch.LongTensor([item[2] for item in batch])
     target = torch.LongTensor([item[3] for item in batch])
     num_tokens = torch.LongTensor([item[5] for item in batch])
+    prompt = torch.LongTensor([item[6] for item in batch])
     text = [item[4] for item in batch]
 
-    inputs, mask, segment, target, num_tokens = map(
+    inputs, mask, segment, target, num_tokens, prompt = map(
         lambda x: x.to(device),
-        (inputs, mask, segment, target, num_tokens),
+        (inputs, mask, segment, target, num_tokens, prompt),
     )
 
-    return inputs, mask, segment, target, text, num_tokens
+    return inputs, mask, segment, target, text, num_tokens, prompt

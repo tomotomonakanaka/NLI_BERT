@@ -1,10 +1,11 @@
 # NLI_MODELS
 ## Setup
 ```
-$ unzip TOEFL_sentence.zip
-$ pip install pytorch # depending on your device
+$ pip install torch torchvision # depending on your device
 $ pip install -r requirements.txt
+$ mkdir TOEFL11
 $ mkdir save_model
+$ python preprocess/TOEFL_csv.py
 ```
 ### run simple BERT model ###
 ```
@@ -35,6 +36,30 @@ epoch #  5	train_loss: 0.113	valid_loss: 1.196
     accuracy                           0.76      1100
    macro avg       0.76      0.76      0.76      1100
 weighted avg       0.76      0.76      0.76      1100
+```
+```
+$ python simple_disentanglement_BERT.py
+```
+```
+Start Training!
+epoch #  1      train_loss_L1: 1.956    valid_loss_L1: 1.543                                                                                                                                                
+
+epoch #  1      train_loss_prompt: 2.073        valid_loss_prompt: 2.026
+
+epoch #  1      train_loss_bert: 1.333  valid_loss_L1: 0.925
+
+epoch #  2      train_loss_L1: 1.193    valid_loss_L1: 1.247                                                                                                                                                
+
+epoch #  2      train_loss_prompt: 2.056        valid_loss_prompt: 2.024
+
+epoch #  2      train_loss_bert: 0.565  valid_loss_L1: 0.628
+
+epoch #  3      train_loss_L1: 0.657    valid_loss_L1: 1.156                                                                                                                                                
+
+epoch #  3      train_loss_prompt: 2.056        valid_loss_prompt: 2.038
+
+epoch #  3      train_loss_bert: 0.033  valid_loss_L1: 0.536
+
 ```
 ## run BERT model
 ```

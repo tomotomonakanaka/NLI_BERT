@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import regex as re
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_cosine_with_hard_restarts_schedule_with_warmup
+from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import classification_report
 from tqdm import tqdm, tqdm_notebook
 
@@ -29,20 +29,20 @@ print("device",device)
 
 
 # path
-TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
-DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
-TEST_PATH = "TOEFL_sentence/test_sentence.csv"
+TRAIN_PATH = "TOEFL11/train_dev_sentence.csv"
+DEV_PATH = "TOEFL11/dev_sentence.csv"
+TEST_PATH = "TOEFL11/test_sentence.csv"
 TEST_ROW_PATH = "TOEFL11/test.csv"
-modelPATH = "save_model/paragraphlargeModel"
+modelPATH = "save_model/BERTSentence1"
 
 
 # define parameter
 max_len = 128
-batch_size = 16
+batch_size = 32
 max_epochs = 4
 num_training_steps = max_epochs * int(161434/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
-bert_name = "bert-large-uncased"
+bert_name = "bert-base-uncased"
 learning_rate = 6e-5
 
 
@@ -70,14 +70,14 @@ optimizer_grouped_parameters = [
     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
      'weight_decay_rate': 0.0}]
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
-scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, 3)
+scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps)
 
 
 # define training and validation
 def train_epoch(model, optimizer, train_loader):
     model.train()
     train_loss = total = 0
-    for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(train_loader,
+    for inputs, mask, segment, target, text, num_tokens, prompt in tqdm(train_loader,
                                                              desc='Training',
                                                              leave=False):
         optimizer.zero_grad()
@@ -94,7 +94,7 @@ def validate_epoch(model, valid_loader):
     model.eval()
     with torch.no_grad():
         valid_loss = total = 0
-        for inputs, mask, segment, target, text, proficiency, num_tokens in tqdm(valid_loader,
+        for inputs, mask, segment, target, text, num_tokens, prompt in tqdm(valid_loader,
                                                                  desc='Validating',
                                                                  leave=False):
             loss = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[0]
@@ -113,11 +113,6 @@ while True:
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
-    # Early stopping if the current valid_loss is
-    # greater than the last three valid losses
-    if len(valid_losses) > 2 and all(valid_loss > loss for loss in valid_losses[-3:]):
-        print('Stopping early')
-        break
 
     train_losses.append(train_loss)
     valid_losses.append(valid_loss)
@@ -127,25 +122,13 @@ while True:
         break
 
 
-# save loss graph
-epoch_ticks = range(1, n_epochs + 1)
-plt.plot(epoch_ticks, train_losses)
-plt.plot(epoch_ticks, valid_losses)
-plt.legend(['Train Loss', 'Valid Loss'])
-plt.title('Losses')
-plt.xlabel('Epoch #')
-plt.ylabel('Loss')
-plt.xticks(epoch_ticks)
-plt.savefig('loss.png')
-
-
 # prediction of paragraph
 print("Start Prediction")
 model.eval()
 y_true, y_pred = [], []
 y_logits = []
 with torch.no_grad():
-    for inputs, mask, segment, target, text, proficiency, num_tokens in test_loader:
+    for inputs, mask, segment, target, text, num_tokens, prompt in test_loader:
         loss,logits = model(inputs, token_type_ids=segment, attention_mask=mask, labels=target)[:2]
 
         logits = logits.detach().cpu().numpy()

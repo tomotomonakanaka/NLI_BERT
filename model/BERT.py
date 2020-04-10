@@ -3,13 +3,16 @@ import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 
-class BertForToefl(BertPreTrainedModel):
+class Bert(Bert):
     def __init__(self, config):
-        super(BertForToefl, self).__init__(config)
+        super(Bert, self).__init__(config)
         self.num_labels = config.num_labels
 
         self.bert = BertModel(config)
+
+        # data parallel
         self.bert = nn.DataParallel(self.bert, device_ids=[0,1], output_device=0)
+
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, self.config.num_labels)
 
