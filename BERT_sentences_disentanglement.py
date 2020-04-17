@@ -28,9 +28,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
 # path
-TRAIN_PATH = "TOEFL_sentence/train_sentence.csv"
-DEV_PATH = "TOEFL_sentence/dev_sentence.csv"
-TEST_PATH = "TOEFL_sentence/test_sentence.csv"
+TRAIN_PATH = "TOEFL11/train_dev_sentences.csv"
+DEV_PATH = "TOEFL11/dev_sentences.csv"
+TEST_PATH = "TOEFL11/test_sentences.csv"
 TEST_ROW_PATH = "TOEFL11/test.csv"
 modelPATH = "save_model/paragraphdisentanglingModel"
 
@@ -39,7 +39,8 @@ modelPATH = "save_model/paragraphdisentanglingModel"
 max_len = 128
 batch_size = 32
 max_epochs = 4
-num_training_steps = max_epochs * int(161434/batch_size)
+L1_label = 11
+num_training_steps = max_epochs * int(179949/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
 learning_rate_bert = 6e-5
@@ -56,7 +57,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate
 
 # load model
 print("Load Model")
-model = BertForToefl.from_pretrained(bert_name, num_labels=11,output_hidden_states=True, num_prompt=8)
+model = BertForToefl.from_pretrained(bert_name, num_labels=L1_label,output_hidden_states=True, num_prompt=8)
 model = model.to(device)
 
 # define optimizer

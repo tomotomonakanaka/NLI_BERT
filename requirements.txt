@@ -7,3 +7,4 @@ matplotlib
 regex
 transformers==2.5.1
 nltk
+regex

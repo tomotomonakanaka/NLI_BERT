@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import regex as re
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
+from transformers import BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import classification_report
 from tqdm import tqdm, tqdm_notebook
 
@@ -18,6 +18,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.data.dataset import random_split
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+from model.BERT import BertForToefl
 
 from model.data import ToeflDataset, collate
 
@@ -27,14 +28,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("device",device)
 
 # path
-TRAIN_PATH = "TOEFL11/train.csv"
+TRAIN_PATH = "TOEFL11/train_dev.csv"
 DEV_PATH = "TOEFL11/dev.csv"
 TEST_PATH = "TOEFL11/test.csv"
 modelPATH = "save_model/simpleModel"
 
 # define parameter
 max_len = 512
-batch_size = 8
+batch_size = 16
 max_epochs = 5
 num_training_steps = max_epochs * int(9900/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
@@ -51,7 +52,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate
 
 # load model
 print("Load Model")
-model = BertForSequenceClassification.from_pretrained(bert_name, num_labels=11)
+model = BertForToefl.from_pretrained(bert_name, num_labels=11)
 model = model.to(device)
 
 # define optimizer
@@ -104,11 +105,6 @@ while True:
     tqdm.write(
         f'epoch #{n_epochs + 1:3d}\ttrain_loss: {train_loss:.3f}\tvalid_loss: {valid_loss:.3f}\n',
     )
-    # Early stopping if the current valid_loss is
-    # greater than the last three valid losses
-    if len(valid_losses) > 2 and all(valid_loss > loss for loss in valid_losses[-3:]):
-        print('Stopping early')
-        break
 
     train_losses.append(train_loss)
     valid_losses.append(valid_loss)
@@ -116,17 +112,6 @@ while True:
 
     if n_epochs >= max_epochs:
         break
-
-# save loss graph
-epoch_ticks = range(1, n_epochs + 1)
-plt.plot(epoch_ticks, train_losses)
-plt.plot(epoch_ticks, valid_losses)
-plt.legend(['Train Loss', 'Valid Loss'])
-plt.title('Losses')
-plt.xlabel('Epoch #')
-plt.ylabel('Loss')
-plt.xticks(epoch_ticks)
-plt.savefig('loss.png')
 
 # prediction
 print("Start Prediction")
@@ -143,5 +128,6 @@ with torch.no_grad():
         y_true.extend(predictions)
         y_pred.extend(target)
 
-print(classification_report(y_pred, y_true))
-torch.save(model, modelPATH)
+print(classification_report(y_true, y_pred))
+print(np.sum(y_pred==y_true)/len(y_true))
+# torch.save(model, modelPATH)

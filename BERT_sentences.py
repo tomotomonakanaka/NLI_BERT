@@ -29,18 +29,19 @@ print("device",device)
 
 
 # path
-TRAIN_PATH = "TOEFL11/train_dev_sentence.csv"
-DEV_PATH = "TOEFL11/dev_sentence.csv"
-TEST_PATH = "TOEFL11/test_sentence.csv"
+TRAIN_PATH = "TOEFL11/train_dev_sentences.csv"
+DEV_PATH = "TOEFL11/dev_sentences.csv"
+TEST_PATH = "TOEFL11/test_sentences.csv"
 TEST_ROW_PATH = "TOEFL11/test.csv"
-modelPATH = "save_model/BERTSentence1"
+modelPATH = "save_model/BERTSentence2"
 
 
 # define parameter
 max_len = 128
 batch_size = 32
 max_epochs = 4
-num_training_steps = max_epochs * int(161434/batch_size)
+L1_label = 11
+num_training_steps = max_epochs * int(179949/batch_size)
 num_warmup_steps = int(num_training_steps*0.1)
 bert_name = "bert-base-uncased"
 learning_rate = 6e-5
@@ -57,7 +58,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate
 
 # load model
 print("Load Model")
-model = BertForToefl.from_pretrained(bert_name, num_labels=11,output_hidden_states=True)
+model = BertForToefl.from_pretrained(bert_name, num_labels=L1_label,output_hidden_states=True)
 model = model.to(device)
 
 
@@ -142,28 +143,28 @@ print(classification_report(y_pred, y_true))
 
 
 
-# prediction of text
-test_df_true = pd.read_csv(TEST_ROW_PATH)
-y_row_true = test_df_true.L1.values
-
-test_df_predict = pd.read_csv(TEST_PATH)
-test_array_predict = test_df_predict.TextFile.values
-test_sentence_predict = test_df_predict.Sentence.values
-
-preT = None
-preA = np.array([0,0,0,0,0,0,0,0,0,0,0])
-ans = []
-for i in range(len(test_array_predict)):
-    if preT == test_array_predict[i]:
-        preA += np.array(y_logits[i]) #* len(test_sentence_predict[i])
-    else:
-        if preT!=None:
-            ans.append(np.argmax(preA))
-        preA = np.array(y_logits[i]) #* len(test_sentence_predict[i])
-        preT = test_array_predict[i]
-ans.append(np.argmax(preA))
-
-print(classification_report(ans, y_row_true))
-print(np.sum(ans==y_row_true)/len(ans))
+# # prediction of text
+# test_df_true = pd.read_csv(TEST_ROW_PATH)
+# y_row_true = test_df_true.L1.values
+#
+# test_df_predict = pd.read_csv(TEST_PATH)
+# test_array_predict = test_df_predict.TextFile.values
+# test_sentence_predict = test_df_predict.Sentence.values
+#
+# preT = None
+# preA = np.array([0,0,0,0,0,0,0,0,0,0,0])
+# ans = []
+# for i in range(len(test_array_predict)):
+#     if preT == test_array_predict[i]:
+#         preA += np.array(y_logits[i]) #* len(test_sentence_predict[i])
+#     else:
+#         if preT!=None:
+#             ans.append(np.argmax(preA))
+#         preA = np.array(y_logits[i]) #* len(test_sentence_predict[i])
+#         preT = test_array_predict[i]
+# ans.append(np.argmax(preA))
+#
+# print(classification_report(ans, y_row_true))
+# print(np.sum(ans==y_row_true)/len(ans))
 
 torch.save(model, modelPATH)

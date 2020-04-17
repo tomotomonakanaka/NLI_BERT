@@ -56,6 +56,7 @@ def make_sentences(data_numpy, data_sen):
     sentences = []
 
     for i in range(len(data_numpy)):
+        data_sen[i] = data_sen[i].replace('\t','')
         for sen in sent_tokenize(data_sen[i]):
             # too much tokens
             if len(tokenizer.tokenize(sen)) > 128:
@@ -147,6 +148,10 @@ if __name__ == "__main__":
     train_dev_test_data = pd.concat([train_dev_data, test_data])
     train_dev_test_data.to_csv('TOEFL11/train_dev_test.csv')
 
+    TOEFL11_for_EF = train_dev_test_data[train_dev_test_data['L1']!=9]
+    TOEFL11_for_EF = TOEFL11_for_EF[TOEFL11_for_EF['L1']!=10]
+    TOEFL11_for_EF.to_csv('TOEFL11/TOEFL11_for_EF.csv')
+
     # making sentences dataset
     train_numpy = train_data.to_numpy()[:,:-1]
     dev_numpy = dev_data.to_numpy()[:,:-1]
@@ -166,3 +171,7 @@ if __name__ == "__main__":
     train_dev_sentences_df.to_csv('TOEFL11/train_dev_sentences.csv')
     train_dev_test_sentences_df = pd.concat([train_dev_sentences_df, test_sentences_df])
     train_dev_test_sentences_df.to_csv('TOEFL11/train_dev_test_sentences.csv')
+
+    TOEFL11_for_EF = train_dev_test_sentences_df[train_dev_test_sentences_df['L1']!=9]
+    TOEFL11_for_EF = TOEFL11_for_EF[TOEFL11_for_EF['L1']!=10]
+    TOEFL11_for_EF.to_csv('TOEFL11/TOEFL11_for_EF_sentences.csv')
